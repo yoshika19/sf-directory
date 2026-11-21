@@ -1,0 +1,59 @@
+CARA PASANG DI FORUM
+====================
+Di file guidebook kamu (yang berisi blok <script> Project Directory), cari baris:
+
+  var DIR_KEY = 'sf_dir_cache_v9';
+
+Hapus SEMUA kode dari baris itu sampai akhir fungsi manualSync, yaitu sampai tepat
+sebelum baris:
+
+  window.dirRefresh = function () { loadDirectory(true, true); };
+
+(isinya: DIR_KEY ... currentViewer, newCache, readDirCache, writeDirCache, fetchText,
+runPool, setLoadingText, setSyncSpin, loadDirectory, lastSyncAt, manualSync)
+
+Lalu tempel kode di bawah ini di posisi yang sama.
+GANTI USERNAME dan sf-directory dengan nama GitHub dan nama repo kamu.
+
+----- MULAI TEMPEL -----
+
+  var JSON_URL = 'https://USERNAME.github.io/sf-directory/directory.json';
+
+  function setSyncSpin(on) {
+    var btn = el('sf-sync');
+    if (btn) btn.classList.toggle('spin', !!on);
+  }
+
+  function loadDirectory() {
+    if (state.loading) return;
+    state.loading = true;
+    setSyncSpin(true);
+    // ?t= supaya browser tidak memakai salinan lama lebih dari 5 menit
+    fetch(JSON_URL + '?t=' + Math.floor(Date.now() / 300000))
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (d) {
+        state.music = d.music || [];
+        state.screen = d.screen || [];
+        state.incomplete = !(state.music.length + state.screen.length);
+      })
+      .catch(function () {
+        state.incomplete = true;
+      })
+      .then(function () {
+        state.loaded = true;
+        state.loading = false;
+        setSyncSpin(false);
+        renderList();
+      });
+  }
+
+  // tombol Sync sekarang cuma mengambil ulang JSON
+  function manualSync() { loadDirectory(); }
+
+----- SELESAI TEMPEL -----
+
+Catatan: di bagian bawah ada kode yang memanggil manualSync(e.shiftKey) dan
+loadDirectory(false). Dua-duanya tetap jalan dengan versi baru, jadi tidak perlu diubah.
