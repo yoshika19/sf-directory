@@ -1,18 +1,16 @@
-// crawl.mjs - mengambil data Project Directory dari forum lalu menulis docs/directory.json
 import { JSDOM } from 'jsdom';
 import fs from 'node:fs';
 
 const BASE = 'https://sunsetboulevard.jcink.net';
-const COOKIE = process.env.JCINK_COOKIE || '';   // kosong = crawl sebagai guest
+const COOKIE = process.env.JCINK_COOKIE || ''; 
 const FORUMS = ['36', '39'];
-const MAX_PAGES = 30;       // 30 halaman x 15 topik per board
-const DELAY_MS = 400;       // jeda antar request supaya sopan ke server
+const MAX_PAGES = 30;       // 30 pages x 15 topics per board
+const DELAY_MS = 400;       // request gap
 
-// pengganti hal-hal yang biasanya disediakan browser
 globalThis.location = { host: 'sunsetboulevard.jcink.net' };
 globalThis.DOMParser = new JSDOM('').window.DOMParser;
 
-// ====== PARSER (disalin apa adanya dari guidebook) ======
+// ====== PARSER ======
   var YEAR_PART = '\\d{4}(?:\\s*[-–—]\\s*(?:\\d{4}|present|now))?';
   var BASED_RE = new RegExp('\\((' + YEAR_PART + ')\\)\\s*$', 'i');
 
