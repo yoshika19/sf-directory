@@ -1,0 +1,28 @@
+name: crawl-directory
+
+on:
+  schedule:
+    - cron: '*/20 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: node crawl.mjs
+        env:
+          JCINK_COOKIE: ${{ secrets.JCINK_COOKIE }}
+      - name: Commit hasil
+        run: |
+          git config user.name "directory-bot"
+          git config user.email "directory-bot@users.noreply.github.com"
+          git add docs/directory.json
+          git diff --staged --quiet || (git commit -m "update directory" && git push)
