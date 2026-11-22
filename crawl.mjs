@@ -1,16 +1,17 @@
 import { JSDOM } from 'jsdom';
 import fs from 'node:fs';
+import { buildTopicCredits, addToIndex, createIndex } from './credits.mjs';
 
 const BASE = 'https://sunsetboulevard.jcink.net';
 const COOKIE = process.env.JCINK_COOKIE || ''; 
 const FORUMS = ['36', '39'];
-const MAX_PAGES = 30;       // 30 pages x 15 topics per board
-const DELAY_MS = 400;       // request gap
+const FORUM_NAMES = { '36': 'Project Directory', '39': 'Belmont-Lawrence Production' };
+const MAX_PAGES = 30;
+const DELAY_MS = 400;
 
 globalThis.location = { host: 'sunsetboulevard.jcink.net' };
 globalThis.DOMParser = new JSDOM('').window.DOMParser;
 
-// ====== PARSER ======
   var YEAR_PART = '\\d{4}(?:\\s*[-–—]\\s*(?:\\d{4}|present|now))?';
   var BASED_RE = new RegExp('\\((' + YEAR_PART + ')\\)\\s*$', 'i');
 
@@ -432,7 +433,6 @@ globalThis.DOMParser = new JSDOM('').window.DOMParser;
     });
     return results;
   }
-// ====== AKHIR PARSER ======
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -444,7 +444,6 @@ async function get(path) {
   return r.text();
 }
 
-// versi Node dari parseForum: kumpulkan topik dari satu halaman listing
 function collectTopics(doc, fid, topics, seen) {
   let added = 0;
   let anchors = doc.querySelectorAll('.topic-tit a[href*="showtopic="], .topic-row a[href*="showtopic="]');
@@ -473,12 +472,16 @@ function collectTopics(doc, fid, topics, seen) {
     seen[tid] = 1;
     added++;
     const fullTitle = (tags.length ? tags.join(' ') + ' ' : '') + mainTxt;
-    topics.push({ tid: tid, f: fid, title: fullTitle, sig: fullTitle, url: '/index.php?showtopic=' + tid });
+    const rowEl = a.closest ? a.closest('.topic-row, tr, li') : null;
+    const dEl = rowEl ? rowEl.querySelector('.desc, .topic-desc, .topic-description') : null;
+    const desc = dEl ? trim(dEl.textContent).replace(/^[\s|]+/, '') : '';
+    topics.push({ tid: tid, f: fid, title: fullTitle, desc: desc, sig: fullTitle, url: '/index.php?showtopic=' + tid });
   });
   return added;
 }
 
 const music = [], screen = [];
+const credits = createIndex();
 let failed = 0;
 
 for (const fid of FORUMS) {
@@ -498,12 +501,14 @@ for (const fid of FORUMS) {
       const doc = new DOMParser().parseFromString(await get(t.url), 'text/html');
       parseMusicDoc(doc, t).forEach(p => { p.forum = fid; music.push(p); });
       parseScreenDoc(doc, t).forEach(p => { p.forum = fid; screen.push(p); });
+      try {
+        addToIndex(credits, buildTopicCredits(doc, { tid: t.tid, title: t.title, desc: t.desc, forum: FORUM_NAMES[fid] || '' }));
+      } catch (e) { console.error('credits gagal:', t.url, e.message); failed++; }
     } catch (e) { console.error('topik gagal:', t.url, e.message); failed++; }
     await sleep(DELAY_MS);
   }
 }
 
-// pengaman: kalau hasilnya kosong, jangan timpa file lama yang masih bagus
 if (!music.length && !screen.length) {
   console.error('Hasil kosong (kemungkinan butuh login / cookie salah). File lama dibiarkan.');
   process.exit(1);
@@ -511,4 +516,6 @@ if (!music.length && !screen.length) {
 
 fs.mkdirSync('docs', { recursive: true });
 fs.writeFileSync('docs/directory.json', JSON.stringify({ updatedAt: Date.now(), music, screen }));
+fs.writeFileSync('docs/credits.json', JSON.stringify({ updatedAt: Date.now(), projects: credits.projects, byName: credits.byName }));
+console.log('credits: ' + Object.keys(credits.byName).length + ' karakter, ' + Object.keys(credits.projects).length + ' proyek');
 console.log('Selesai: ' + screen.length + ' proyek screen, ' + music.length + ' rilis music, gagal: ' + failed);
