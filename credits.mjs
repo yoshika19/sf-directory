@@ -36,9 +36,9 @@ export function parseYearRange(txt) {
 export function whoKeys(whoText) {
   const w = normName(whoText);
   if (!w) return [];
-  const out = [w];
+  const out = [];
   w.split(/\s*(?:,|&|\/|\+|;|\band\b)\s*/i).forEach(tok => {
-    const tk = clean(tok.replace(/^@+/, '').replace(/\s*\([^)]*\)\s*$/, ''));
+    const tk = clean(tok.replace(/^@+/, '').replace(/\s*\([^)]*\)\s*/g, ' '));
     if (tk && !out.includes(tk)) out.push(tk);
   });
   return out;
