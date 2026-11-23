@@ -1,0 +1,50 @@
+name: crawl-directory
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: crawl-directory
+  cancel-in-progress: false
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: node crawl.mjs
+        env:
+          JCINK_COOKIE: ${{ secrets.JCINK_COOKIE }}
+
+      - name: Sanity check
+        run: |
+          node -e '
+            const fs = require("fs"), cp = require("child_process");
+            const cnt = d => (d.music || []).length + (d.screen || []).length;
+            const now = JSON.parse(fs.readFileSync("docs/directory.json", "utf8"));
+            let prev = 0;
+            try {
+              prev = cnt(JSON.parse(cp.execSync("git show HEAD:docs/directory.json", { stdio: ["ignore", "pipe", "ignore"] }).toString()));
+            } catch (e) {}
+            const n = cnt(now);
+            console.log("entries now:", n, "| prev:", prev);
+            if (n === 0 || (prev >= 10 && n < prev * 0.7)) {
+              console.error("Hasil crawl mencurigakan (kosong / turun >30%), batal commit. Cek JCINK_COOKIE.");
+              process.exit(1);
+            }
+          '
+
+      - name: Commit hasil
+        run: |
+          git config user.name "directory-bot"
+          git config user.email "directory-bot@users.noreply.github.com"
+          git add docs/directory.json docs/credits.json
+          git diff --staged --quiet || (git commit -m "update directory" && git push)
