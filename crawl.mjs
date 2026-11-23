@@ -155,7 +155,7 @@ globalThis.DOMParser = new JSDOM('').window.DOMParser;
       }
 
       var irpArtists = [], curSec = '', curSub = '', tracks = [], seenTracks = {};
-      function addTrack(irpT, origS, origA, isOrig) {
+      function addTrack(irpT, origS, origA, isOrig, extra) {
         irpT = trim(irpT);
         origS = trim(origS);
         origA = trim(origA);
@@ -167,13 +167,19 @@ globalThis.DOMParser = new JSDOM('').window.DOMParser;
         var tk = compactKey(finalSong) + '|' + parseArtistsList(finalArt).join(',') + '|' + compactKey(irpT || finalSong) + '|' + (origFlag ? '1' : '0');
         if (seenTracks[tk]) return;
         seenTracks[tk] = 1;
-        tracks.push({
+        var obj = {
           irpTrack: irpT || finalSong,
           origSong: finalSong,
           origArtist: finalArt,
           artistList: origFlag ? [] : parseArtistsList(finalArt),
           isOriginal: origFlag
-        });
+        };
+        if (extra) {
+          if (extra.dzId) obj.dzId = extra.dzId;
+          if (extra.noPreview) obj.noPreview = true;
+          if (extra.audioEmbed) obj.audioEmbed = true;
+        }
+        tracks.push(obj);
       }
 
       [].forEach.call(wrap.querySelectorAll('pj-sec, pj-sub, pj-row, details'), function (el) {
@@ -231,7 +237,11 @@ globalThis.DOMParser = new JSDOM('').window.DOMParser;
           if (origS && !origA) origA = defaultArtist;
           if (!origS && irpT && defaultArtist) { origS = irpT; origA = defaultArtist; }
 
-          addTrack(irpT, origS, origA, !origA && (isOrigProj || isMusic));
+          addTrack(irpT, origS, origA, !origA && (isOrigProj || isMusic), {
+            dzId: trim(el.getAttribute('data-dzid') || ''),
+            noPreview: el.getAttribute('data-nodz') === '1',
+            audioEmbed: !!(el.classList.contains('pj-trk') || el.getAttribute('data-audio') || el.querySelector('iframe'))
+          });
           return;
         }
 
@@ -257,7 +267,10 @@ globalThis.DOMParser = new JSDOM('').window.DOMParser;
           var dArt = el.getAttribute('data-artist');
           if (!origS && dSong) origS = dSong;
           if (!origA && dArt) origA = dArt.replace(/\|/g, ', ');
-          addTrack(irpTrack, origS, origA, !origA && (isOrigProj || isMusic));
+          addTrack(irpTrack, origS, origA, !origA && (isOrigProj || isMusic), {
+            dzId: trim(el.getAttribute('data-dzid') || ''),
+            noPreview: el.getAttribute('data-nodz') === '1'
+          });
         } else if (/^(artists|cast)/i.test(curSub)) {
           var rc = el.cloneNode(true);
           var wEl = rc.querySelector('pj-who');
