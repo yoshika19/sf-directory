@@ -141,7 +141,7 @@ function collectRoles(doc) {
     }
 
     let curSec = '', curSecRaw = '', curSub = '';
-    const skipSecRe = /franchise|installment|tracklist|tracks|episodes|overview|synopsis/i;
+    const skipSecRe = /franchise|installment|tracklist|tracks|episodes?|seasons?|parts?|overview|synopsis/i;
     wrap.querySelectorAll('pj-sec, pj-sub, pj-row').forEach(elNode => {
       if (elNode.closest && elNode.closest('details.pj-inst')) return;
       const tag = elNode.tagName.toLowerCase();
