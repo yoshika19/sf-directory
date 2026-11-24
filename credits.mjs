@@ -1,4 +1,3 @@
-
 const trim = s => String(s == null ? '' : s).trim();
 const clean = t => trim(String(t || '').replace(/no information/gi, '').replace(/\s+/g, ' '));
 
@@ -107,6 +106,21 @@ function extractProjectMeta(doc, entry) {
     });
   }
   entry.artist = mainArtists.join(', ');
+
+  entry.overview = '';
+  const ovSec = [...wrap.querySelectorAll('pj-sec')].find(s => /overview|synopsis/i.test(s.textContent));
+  if (ovSec) {
+    const parts = [];
+    let n = ovSec.nextElementSibling;
+    while (n && n.tagName.toLowerCase() !== 'pj-sec') {
+      if (n.tagName.toLowerCase() === 'pj-text') {
+        const t = clean(n.textContent);
+        if (t) parts.push(t);
+      }
+      n = n.nextElementSibling;
+    }
+    entry.overview = parts.join(' ');
+  }
   return entry;
 }
 
@@ -239,7 +253,7 @@ export function buildTopicCredits(doc, info) {
   }
   const entry = {
     tid: String(info.tid), title: rawTit, forum: info.forum || '', desc: rawDesc,
-    poster: '', isMusic: false, format: '', prod: '', artist: '',
+    poster: '', overview: '', isMusic: false, format: '', prod: '', artist: '',
     year: yrR ? parseInt(yrR.start, 10) : parseYearFromText(rawTit),
     yearRange: yrR
   };
@@ -263,10 +277,9 @@ export function createIndex() {
 
 export function addToIndex(index, built) {
   const keys = Object.keys(built.refs);
-  if (!keys.length) return 0;
   const p = built.project;
   index.projects[p.tid] = {
-    title: p.title, forum: p.forum, desc: p.desc, poster: p.poster, isMusic: p.isMusic,
+    title: p.title, forum: p.forum, desc: p.desc, poster: p.poster, overview: p.overview, isMusic: p.isMusic,
     format: p.format, prod: p.prod, artist: p.artist, year: p.year, yearRange: p.yearRange
   };
   keys.forEach(k => { (index.byName[k] = index.byName[k] || []).push(built.refs[k]); });
